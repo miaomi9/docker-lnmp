@@ -1,0 +1,9 @@
+resources:
+  - ../nodePort
+patches:
+  - path: patch.json
+    target:
+      group: ""
+      kind: Service
+      name: nginx
+      version: v1

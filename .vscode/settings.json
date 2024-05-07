@@ -1,0 +1,91 @@
+{
+  // https://www.schemastore.org/json/
+  "yaml.schemas": {
+    "https://raw.fastgit.org/pcit-ce/pcit/master/config/config.schema.json": [
+      ".pcit.yml",
+      ".pcit.yaml",
+      ".pcit/*.yml",
+      ".pcit/*.yaml"
+    ],
+    "windows/lnmp-windows-pm-repo/lwpm.schema.json": [
+      "lwpm.yaml",
+      "lwpm.yml"
+    ],
+    "kubernetes/coreos/ignition/butane-fcos.schema.json": [
+      "*.bu",
+    ],
+    // raw.githubusercontent.com
+    "https://raw.fastgit.org/coreos/ignition/main/config/v3_4_experimental/schema/ignition.json":[
+      "*.ign"
+    ],
+    "https://raw.fastgit.org/compose-spec/compose-spec/master/schema/compose-spec.json":[
+       "docker-lnmp.yml",
+       "docker-lnmp.*.yml",
+       "docker-production.yml",
+       "docker-workspace.yml",
+       "docker-workspace.*.yml",
+    ]
+  },
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "lwpm.json"
+      ],
+      "url": "./windows/lnmp-windows-pm-repo/lwpm.schema.json"
+    },
+    {
+      "fileMatch": [
+        "docker-image-sync.json",
+        "docker-image-sync*.json"
+      ],
+      "url": "./scripts/docker-image-sync/config.schema.json"
+    },
+    {
+      "fileMatch": [
+        "*.patch.json"
+      ],
+      "url": "https://json.schemastore.org/json-patch"
+    }
+  ],
+  // "yaml.trace.server": "",
+  "vs-kubernetes": {
+    // "vs-kubernetes.kubectl-path": "C:\\bin\\kubectl.exe",
+  },
+  "editor.fontFamily": "JetBrains Mono, Consolas, 'Courier New', monospace",
+  "editor.fontSize": 20,
+  "editor.renderControlCharacters": true,
+  "editor.renderWhitespace": "all",
+  "files.eol": "\n",
+  // "docker.host":"ssh://your-remote-user@your-remote-machine-fqdn-or-ip-here",
+  // "docker.host":"tcp://your-remote-machine-fqdn-or-ip-here:port",
+  // 文件类型关联
+  "files.associations": {
+    "*.ign": "json",
+    "*.bu": "yaml",
+    "*.conflist": "json",
+    "**/systemd/**/**.conf": "systemd-conf"
+  },
+  "typescript.tsc.autoDetect": "off",
+  "grunt.autoDetect": "off",
+  "jake.autoDetect": "off",
+  "gulp.autoDetect": "off",
+  "npm.autoDetect": "off",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "Command Prompt": {
+      "path": [
+        "${env:windir}\\Sysnative\\cmd.exe",
+        "${env:windir}\\System32\\cmd.exe"
+      ],
+      "args": [],
+      "icon": "terminal-cmd"
+    },
+    "Git Bash": {
+      "source": "Git Bash"
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell"
+}

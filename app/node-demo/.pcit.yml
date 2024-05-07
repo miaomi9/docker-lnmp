@@ -1,0 +1,11 @@
+steps:
+
+  install:
+    run:
+      - npm install
+
+  scripts:
+    run:
+      - npm test
+
+image: node

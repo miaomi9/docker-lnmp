@@ -1,0 +1,10 @@
+resources:
+  - ../overlays/development
+  - ../../../../config/registry
+patches:
+  - path: custom.patch.json
+    target:
+      group: apps
+      kind: Deployment
+      name: registry
+      version: v1

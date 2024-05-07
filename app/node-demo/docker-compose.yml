@@ -1,0 +1,11 @@
+
+
+services:
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - KEY=VALUE
+    image: khs1994/node:alpine

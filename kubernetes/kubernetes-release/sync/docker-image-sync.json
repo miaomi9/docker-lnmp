@@ -1,0 +1,12 @@
+[
+  {
+    "source": "kubernetes-node:K8S_VERSION",
+    "dest": "kubernetes-node:K8S_VERSION"
+  },
+  {
+    "source": "kubernetes-server:K8S_VERSION"
+  },
+  {
+    "source": "kubectl:K8S_VERSION"
+  }
+]

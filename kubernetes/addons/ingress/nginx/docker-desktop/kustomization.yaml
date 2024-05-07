@@ -1,0 +1,10 @@
+resources:
+- deploy.yaml
+patches:
+  - path: port.patch.json
+    target:
+      kind: Service
+      name: ingress-nginx-controller
+      version: v1
+      namespace: ingress-nginx
+      group: ""

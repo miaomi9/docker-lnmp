@@ -1,0 +1,75 @@
+
+
+x-common-label:
+  &common-label
+  labels:
+    - ${LNMP_DOMAIN:-com.khs1994.lnmp}=true
+    - ${LNMP_DOMAIN:-com.khs1994.lnmp}.app.env=development
+
+services:
+  # web server + daemon + agent
+  pcit:
+    &pcit
+    << : *common-label
+    # restart: always
+    image: pcit/pcit:unit
+    volumes:
+      - ./lrew/pcit/key:/app/pcit/framework/storage/private_key
+      - ./lrew/pcit/.env.${APP_ENV:-development}:/app/pcit/.env.${APP_ENV:-development}
+      - ./config/php8/php.ini:/usr/local/etc/php/php.ini:ro
+      - type: volume
+        source: pcit-tmp
+        target: /tmp
+    networks:
+      - backend
+      - frontend
+    extra_hosts:
+      - "api.github.com:140.82.114.6"
+    working_dir: /app/pcit
+    command:
+      - up
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      # don't run daemon + agent
+      - CI_DAEMON_ENABLED=${CI_DAEMON_ENABLED:-true}
+
+  # fpm + daemon + agent
+  pcit-fpm:
+    << : *pcit
+    image: pcit/pcit:fpm
+    volumes:
+      - ./lrew/pcit/key:/app/.pcit/framework/storage/private_key
+      - ./lrew/pcit/.env.${APP_ENV:-development}:/app/.pcit/.env.${APP_ENV:-development}
+      - ./config/php8/php.ini:/usr/local/etc/php/php.ini:ro
+      - type: volume
+        source: pcit-tmp
+        target: /tmp
+    networks:
+      - backend
+      - frontend
+    command:
+      - up
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      # don't run daemon + agent
+      - CI_DAEMON_ENABLED=${CI_DAEMON_ENABLED:-true}
+
+  # pcit daemon
+  pcit-server:
+    << : *pcit
+    command: server
+
+  # pcit runner
+  pcit-agent:
+    << : *pcit
+    command: agent
+
+  nginx:
+    ports:
+      - "${LNMP_NGINX_HTTPS_PORT:-0.0.0.0:443}:443"
+      - "${LNMP_NGINX_HTTP_PORT:-0.0.0.0:80}:80"
+      - "${LNMP_PCIT_PORT:-0.0.0.0:1218}:1218"
+
+volumes:
+  pcit-tmp:
+    << : *common-label

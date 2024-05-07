@@ -1,0 +1,151 @@
+name: "php"
+description: "PHP is a popular general-purpose scripting language that is especially suited to web development"
+version: "8.2.3"
+pre-version: "8.2.3"
+homepage: "https://www.php.net/"
+bug: "https://www.php.net/"
+github: "php/php-src"
+releases: "https://www.php.net/downloads.php"
+path:
+  - C:\php
+  - C:\php-pre
+command: php
+download-filename: php-${VERSION}-${VC_VERSION}-x64.zip
+scripts:
+  platform-reqs: ["if(!$IsWindows){echo $False}"]
+  uninstall: |
+    if($isPre -eq 1){_cleanup "C:\php-pre"}else{_cleanup "C:\php"}
+  version: (php -v).split(" ")[1]
+  postinstall: |
+    # https://www.php.net/manual/en/openssl.installation.php
+    # $OPENSSL_CONF="$env:ProgramFiles\Common Files\SSL\openssl.cnf"
+
+    # if (!(Test-Path $OPENSSL_CONF)){
+    #   if(!(Test-Path $OPENSSL_CONF\..\)){
+    #     New-Item -ItemType Directory $OPENSSL_CONF\..\
+    #   }
+
+    #   Copy-Item $PHP_PREFIX\extras\ssl\openssl.cnf $OPENSSL_CONF
+    # }
+
+    _install_ext $PHP_PREFIX
+  test: |
+    & ${PHP_PREFIX}/php -v
+  install: |
+    if(!(Test-Path C:\Windows\System32\vcruntime140.dll)){
+      printError "please install vclib"
+      exit 0
+    }
+
+    $PHP_INI="${PHP_PREFIX}/php.ini"
+    $PHP_BIN="${PHP_PREFIX}/php.exe"
+
+    Function _install_ext($PHP_PREFIX){
+      $PHP_CACERT_DATE="2022-04-26"
+
+      $PHP_INI="${PHP_PREFIX}/php.ini"
+      $PHP_BIN="${PHP_PREFIX}/php.exe"
+
+      # https://curl.se/docs/caextract.html
+      # https://github.com/khs1994-docker/lnmp/issues/339
+      _downloader `
+        https://curl.se/ca/cacert-${PHP_CACERT_DATE}.pem `
+        cacert-${PHP_CACERT_DATE}.pem `
+        cacert-${PHP_CACERT_DATE}.pem
+
+      copy-item -r -force cacert-${PHP_CACERT_DATE}.pem C:\bin
+
+      Function EnableExt($ext){
+        if(& ${PHP_BIN} --ri $ext | select-string "Extension '$ext' not present."){
+          PrintInfo "enable php(${PHP_BIN}) ext $ext"
+
+          "extension=$ext" `
+          | out-file -Append $PHP_INI -encoding utf8
+        }
+      }
+
+      EnableExt mbstring
+      EnableExt openssl
+
+      #
+      # Windows php curl ssl
+      #
+      # @link https://github.com/khs1994-docker/lnmp/issues/339
+      #
+
+      if(!(Get-Content $PHP_INI | Select-String "^curl.cainfo=C:\\bin\\cacert-${PHP_CACERT_DATE}.pem")){
+        "curl.cainfo=C:\bin\cacert-${PHP_CACERT_DATE}.pem" `
+        | out-file -Append $PHP_INI -encoding utf8
+      }
+
+      Get-Content $PHP_INI | Select-String "^curl.cainfo=C:\\bin\\cacert-${PHP_CACERT_DATE}.pem"
+
+      echo `n
+    }
+
+    _cleanup $unzipDesc
+    _unzip $filename $unzipDesc
+
+    Copy-item -r -force $unzipDesc "C:\"
+    if (!(Test-Path $PHP_PREFIX\php.ini)){
+      Copy-Item $PHP_PREFIX\php.ini-development $PHP_PREFIX\php.ini
+    }
+
+    _cleanup $unzipDesc
+
+    if($isPre){
+      if(& $PHP_BIN -r "echo ini_get('extension_dir');" -ne 'ext'){
+        'extension_dir = "ext"' `
+        | out-file -Append $PHP_INI -encoding utf8
+      }
+
+      _ln $PHP_PREFIX/php.exe      $PHP_PREFIX/php-pre.exe
+      _ln $PHP_PREFIX/php-cgi.exe  $PHP_PREFIX/php-cgi-pre.exe
+    }
+
+    mkdir -f $home\lnmp\windows\logs\php | out-null
+    mkdir -f $home\lnmp\windows\logs\php-pre | out-null
+    new-item $home\lnmp\windows\logs\php\php_errors.log -ErrorAction "SilentlyContinue"
+    new-item $home\lnmp\windows\logs\php-pre\php_errors.log -ErrorAction "SilentlyContinue"
+    _mkdir C:\logs\php
+    _mkdir C:\logs\php-pre
+    remove-item C:\logs\php\php_errors.log -ErrorAction "SilentlyContinue"
+    remove-item C:\logs\php-pre\php_errors.log -ErrorAction "SilentlyContinue"
+    _ln      $home\lnmp\windows\logs\php\php_errors.log C:\logs\php\php_errors.log
+    _ln      $home\lnmp\windows\logs\php-pre\php_errors.log C:\logs\php-pre\php_errors.log
+
+  get-version: |-
+    if(!($VERSION)){
+    $VERSION=$stable_version
+    }
+    if($isPre){
+    $VC_VERSION="nts-Win32-vs16"
+    $VERSION=$pre_version
+    $url="https://windows.php.net/downloads/qa/php-${VERSION}-${VC_VERSION}-x64.zip"
+    $url_mirror="https://windows.php.net/downloads/qa/archives/php-${VERSION}-${VC_VERSION}-x64.zip"
+    $unzipDesc="php-pre"
+    $global:PHP_PREFIX="C:\php-pre"
+    }else{
+    $VC_VERSION="nts-Win32-vs16"
+    $url="https://windows.php.net/downloads/releases/php-${VERSION}-${VC_VERSION}-x64.zip"
+    $url_mirror="https://windows.php.net/downloads/releases/archives/php-${VERSION}-${VC_VERSION}-x64.zip"
+    $unzipDesc="php"
+    $global:PHP_PREFIX="C:\php"
+    }
+  preinstall:
+    - |
+      # https://docs.microsoft.com/zh-cn/cpp/windows/redistributing-visual-cpp-files?view=msvc-170#install-the-redistributable-packages
+      # check vclib installed
+      if(!(Test-Path 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64')){
+        PrintError 'Please install vclib first, exec $ lpm install vclib'
+
+        exit 1
+      }
+
+      if((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64').Installed -ne 1){
+        PrintError 'Please install vclib first, exec $ lpm install vclib'
+
+        exit 1
+      }
+
+      printInfo 'vclib already installed, continue ...'

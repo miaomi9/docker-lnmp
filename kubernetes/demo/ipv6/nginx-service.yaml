@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: nginx
+  name: nginx
+  namespace: default
+spec:
+  # 1.20-
+  # ipFamily: IPv6
+
+  # 1.20+
+  # ipFamilyPolicy: SingleStack PreferDualStack RequireDualStack
+  # ipFamilies:
+  # - IPv6
+  # - IPv4
+  # clusterIPs:
+  # -
+
+  ipFamilyPolicy: PreferDualStack
+  ipFamilies:
+  - IPv6
+  - IPv4
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 8080
+  selector:
+    run: nginx
+  sessionAffinity: None
+  type: NodePort

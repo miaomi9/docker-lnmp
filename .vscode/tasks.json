@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  // https://code.visualstudio.com/Docs/editor/tasks
+  "tasks": [
+    {
+      "type": "shell",
+      "command": "./lnmp-docker",
+      "windows": {
+        "command": "./lnmp-docker.ps1"
+      },
+      "args": [
+        "config",
+        ">",
+        "docker-compose.yml"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "label": "lnmp-docker config",
+      "detail": "show lnmp-docker compose config"
+    }
+  ]
+}

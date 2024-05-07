@@ -1,0 +1,140 @@
+on:
+  push:
+    tags:
+    - v20.10.*
+  workflow_dispatch:
+
+name: Release
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - JOB_NAME: wsl-php-builder-74
+            DIST_FILE: khs1994-wsl-php74_7.4.33-debian-bullseye_amd64.deb
+          - JOB_NAME: wsl-php-builder-80
+            DIST_FILE: khs1994-wsl-php80_8.0.26-debian-bullseye_amd64.deb
+          - JOB_NAME: wsl-php-builder-81
+            DIST_FILE: khs1994-wsl-php81_8.1.12-debian-bullseye_amd64.deb
+          - JOB_NAME: wsl-php-builder-nightly
+            DIST_FILE: khs1994-wsl-php83_0.0.0-debian-bullseye_amd64.deb
+          - JOB_NAME: wsl-php-builder-debian12-81
+            DIST_FILE: khs1994-wsl-php81_8.1.12-debian-bookworm_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu1804-74
+            DIST_FILE: khs1994-wsl-php74_7.4.33-ubuntu-bionic_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu1804-80
+            DIST_FILE: khs1994-wsl-php80_8.0.26-ubuntu-bionic_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu1804-81
+            DIST_FILE: khs1994-wsl-php81_8.1.12-ubuntu-bionic_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2004-74
+            DIST_FILE: khs1994-wsl-php74_7.4.33-ubuntu-focal_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2004-80
+            DIST_FILE: khs1994-wsl-php80_8.0.26-ubuntu-focal_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2004-81
+            DIST_FILE: khs1994-wsl-php81_8.1.12-ubuntu-focal_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2204-74
+            DIST_FILE: khs1994-wsl-php74_7.4.33-ubuntu-jammy_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2204-80
+            DIST_FILE: khs1994-wsl-php80_8.0.26-ubuntu-jammy_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2204-81
+            DIST_FILE: khs1994-wsl-php81_8.1.12-ubuntu-jammy_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2204-nightly
+            DIST_FILE: khs1994-wsl-php83_0.0.0-ubuntu-jammy_amd64.deb
+          - JOB_NAME: wsl-php-builder-ubuntu2210-81
+            DIST_FILE: khs1994-wsl-php81_8.1.12-ubuntu-kinetic_amd64.deb
+          - JOB_NAME: wsl-php-builder-rhel7-74
+            DIST_FILE: khs1994-wsl-php74-7.4.33-1.el7.centos.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rhel8-74
+            DIST_FILE: khs1994-wsl-php74-7.4.33-1.el8.centos.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rhel8-80
+            DIST_FILE: khs1994-wsl-php80-8.0.26-1.el8.centos.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rhel8-81
+            DIST_FILE: khs1994-wsl-php81-8.1.12-1.el8.centos.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rhel9-74
+            DIST_FILE: khs1994-wsl-php74-7.4.33-1.el9.centos.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rhel9-80
+            DIST_FILE: khs1994-wsl-php80-8.0.26-1.el9.centos.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rhel9-81
+            DIST_FILE: khs1994-wsl-php81-8.1.12-1.el9.centos.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rocky8-81
+            DIST_FILE: khs1994-wsl-php81-8.1.12-1.el8.rocky.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-rocky9-81
+            DIST_FILE: khs1994-wsl-php81-8.1.12-1.el9.rocky.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-fc36-74
+            DIST_FILE: khs1994-wsl-php74-7.4.33-1.fc36.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-fc36-80
+            DIST_FILE: khs1994-wsl-php80-8.0.26-1.fc36.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-fc36-81
+            DIST_FILE: khs1994-wsl-php81-8.1.12-1.fc36.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-fc36-nightly
+            DIST_FILE: khs1994-wsl-php83-0.0.0-1.fc36.x86_64.rpm
+          - JOB_NAME: wsl-php-builder-fc37-nightly
+            DIST_FILE: khs1994-wsl-php83-0.0.0-1.fc37.x86_64.rpm
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    steps:
+    - uses: actions/checkout@main
+      with:
+        fetch-depth: 1
+    # - shell: pwsh
+    #   env:
+    #     NUGET_API_KEY: ${{secrets.NUGET_API_KEY}}
+    #   run: |
+    #     Publish-Script -Path ${PWD}/lnmp-docker.ps1 -NuGetApiKey $env:NUGET_API_KEY -Force
+    - name: Create release
+      if: github.event_name != 'workflow_dispatch'
+      run: |
+        if [ "$JOB_NAME" != 'wsl-php-builder-81' ];then
+          exit 0
+        fi
+
+        export GITHUB_TAG=$(echo $GITHUB_REF | cut -d '/' -f 3)
+        gh release create $GITHUB_TAG -F CHANGELOG.md --target 20.10 -t $GITHUB_TAG || true
+
+        # deb
+        sh scripts/cli/build.sh deb ${GITHUB_TAG}
+        export VERSION=$( echo ${GITHUB_TAG} | cut -d "v" -f 2 )
+        export DEB_NAME=khs1994-docker-lnmp_${VERSION}_amd64.deb
+        ls -la scripts/cli
+        sudo dpkg -i scripts/cli/${DEB_NAME}
+        gh release upload ${GITHUB_TAG} scripts/cli/${DEB_NAME} --repo khs1994-docker/lnmp --clobber
+
+        # rpm
+        test $( echo "${GITHUB_TAG}" | grep alpha ) && exit 0 || true
+        test $( echo "${GITHUB_TAG}" | grep beta ) && exit 0 || true
+        test $( echo "${GITHUB_TAG}" | grep rc ) && exit 0 || true
+        sudo apt install -y rpm
+        sh scripts/cli/build.sh rpm ${GITHUB_TAG}
+        export VERSION=$( echo ${GITHUB_TAG} | cut -d "v" -f 2 )
+        export RPM_NAME=$( cd $HOME; ls *.rpm )
+        ls -la ~/*.rpm
+        gh release upload ${GITHUB_TAG} ${HOME}/${RPM_NAME} --repo khs1994-docker/lnmp --clobber
+
+      env:
+        GITHUB_REF: ${{ github.ref }}
+        JOB_NAME: ${{ matrix.JOB_NAME }}
+    - uses: azure/docker-login@v1
+      with:
+        # login-server: contoso.azurecr.io
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - run: |
+        cd wsl
+        docker compose build ${JOB_NAME}
+        if [ "${GITHUB_EVENT_NAME}" = workflow_dispatch ];then exit 0; fi
+        docker compose push ${JOB_NAME}
+        docker compose run ${JOB_NAME} command || true
+        . .env
+        docker cp $( docker container ls -a --format {{.ID}} ):/${DIST_FILE} .
+        export GITHUB_TAG=$(echo $GITHUB_REF | cut -d '/' -f 3)
+        gh release upload ${GITHUB_TAG} "${DIST_FILE}" --repo khs1994-docker/lnmp --clobber
+      env:
+        JOB_NAME: ${{ matrix.JOB_NAME }}
+        GITHUB_REF: ${{ github.ref }}
+        DIST_FILE: ${{ matrix.DIST_FILE }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+      name: Build

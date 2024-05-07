@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: flexvolume-cifs-test
+  namespace: default
+  labels:
+    app: test
+spec:
+  containers:
+  - name: flexvolume-cifs-test
+    image: busybox
+    command:
+      - sleep
+      - "36000"
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: flexvolume-cifs-pvc
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: flexvolume-cifs-pv
+  labels:
+    name: cifs
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteMany
+  flexVolume:
+    driver: "fstab/cifs"
+    fsType: "cifs"
+    secretRef:
+        name: "flexvolume-cifs-secret"
+    options:
+      # fix me
+      # your smb server address
+      # 插件在节点调用
+      # networkPath: "//HIWIFI/sd/xunlei"
+      # 10.254.0.45 为集群内 smb 服务端地址
+      networkPath: "//10.254.0.45/share"
+      mountOptions: "dir_mode=0777,file_mode=0777,vers=3.0" # noperm
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: cifs
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: flexvolume-cifs-pvc
+  labels:
+    name: cifs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+  selector:
+    matchLabels:
+      name: cifs
+  storageClassName: cifs

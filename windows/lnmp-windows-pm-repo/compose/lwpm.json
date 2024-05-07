@@ -1,0 +1,43 @@
+{
+  "name": "compose",
+  "platform": [
+    {
+      "os": "windows",
+      "architecture": "amd64"
+    },
+    {
+      "os": "windows",
+      "architecture": "arm64"
+    },
+    {
+      "os": "darwin",
+      "architecture": "amd64"
+    },
+    {
+      "os": "darwin",
+      "architecture": "arm64"
+    },
+    {
+      "os": "linux",
+      "architecture": "amd64"
+    },
+    {
+      "os": "linux",
+      "architecture": "arm64"
+    }
+  ],
+  "pre-version": "2.17.3",
+  "scripts": {
+    "dist": "_mkdir $env:LWPM_PKG_ROOT/dist/${env:lwpm_os}-${env:lwpm_architecture}\n\nif(${env:lwpm_os} -ne \"windows\"){\n  $url = $url.trim('.exe')\n  $filename = $filename.trim('.exe')\n}\n\ncurl -L `\n$url `\n-o $env:LWPM_PKG_ROOT/dist/${env:lwpm_os}-${env:lwpm_architecture}/$filename\n",
+    "install": [
+      "_mkdir $HOME/.docker/cli-plugins/",
+      "Copy-Item -Force $filename $HOME/.docker/cli-plugins/docker-compose$(if($_IsWindows){echo .exe})"
+    ],
+    "test": "docker compose version",
+    "uninstall": "_cleanup $HOME/.docker/cli-plugins/docker-compose$(if($_IsWindows){echo .exe})\n",
+    "version": "(docker compose version).split(' ')[3].trim('v')"
+  },
+  "url": "https://github.com/docker/compose/releases/download/v${VERSION}/docker-compose-${env:lwpm_os}-${env:LWPM_UNAME_M}$(if($_IsWindows){echo .exe})",
+  "url-mirror": "https://download.fastgit.org/docker/compose/releases/download/v${VERSION}/docker-compose-${env:lwpm_os}-${env:LWPM_UNAME_M}$(if($_IsWindows){echo .exe})",
+  "version": "2.17.3"
+}

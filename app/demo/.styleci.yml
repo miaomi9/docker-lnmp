@@ -1,0 +1,14 @@
+# https://styleci.io/
+
+risky: true
+
+preset: Symfony
+
+enabled:
+  - strict
+  - strict_param
+  - ordered_use
+
+finder:
+  name:
+    - "*.php"

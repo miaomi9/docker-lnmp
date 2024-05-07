@@ -1,0 +1,14 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: harbor
+  labels:
+    app: "harbor"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  hostPath:
+    path: /var/lib/k8s/harbor
+    type: DirectoryOrCreate

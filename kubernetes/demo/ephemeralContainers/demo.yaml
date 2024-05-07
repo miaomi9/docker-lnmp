@@ -1,0 +1,21 @@
+kind: EphemeralContainers
+apiVersion: v1
+metadata:
+  name: demo-pod
+ephemeralContainers:
+  command: [
+    "sh"
+  ]
+  image: busybox
+  name: debugger
+  stdin: true
+  tty: true
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: demo-pod
+spec:
+  containers:
+    - image: nginx:alpine
+      name: test

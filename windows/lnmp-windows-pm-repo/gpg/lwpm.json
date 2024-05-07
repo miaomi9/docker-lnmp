@@ -1,0 +1,33 @@
+{
+  "name": "gpg",
+  "description": "",
+  "version": "4.1.0",
+  "pre-version": "4.1.0",
+  "homepage": "https://gnupg.org/",
+  "bug": "",
+  "github": "gpg/gpg4win",
+  "releases": "https://gpg4win.org/download.html",
+  "url": "https://files.gpg4win.org/gpg4win-${VERSION}.exe",
+  "url-mirror": "",
+  "pre-url": "",
+  "pre-url-mirror": "",
+  "command": "gpg",
+  "scripts": {
+    "preinstall": "",
+    "install": "Start-Process -FilePath $filename -wait",
+    "postinstall": "",
+    "preuninstall": "",
+    "uninstall": "Start-Process -FilePath \"${env:ProgramFiles(x86)}\\Gpg4win\\gpg4win-uninstall\" -Wait",
+    "postuninstall": "",
+    "pretest": "",
+    "test": "printInfo $(gpg --version)[0] install success",
+    "posttest":"",
+    "version": "(Get-Content ${env:ProgramFiles(x86)}\\Gpg4win\\VERSION)[1]",
+    "platform-reqs": [
+      "if(!$IsWindows){echo $False}"
+    ]
+  },
+  "path": [
+    "${env:ProgramFiles(x86)}\\GnuPG\\bin"
+  ]
+}

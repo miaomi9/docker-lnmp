@@ -1,0 +1,8 @@
+*
+!coreos.sh
+!etcdctl-tls.sh
+!generate-kubelet-bootstrap-kubeconfig.sh
+!.gitignore
+!fcos-etcdctl
+!lwpm.ps1
+!mount_bind_if_not_mount.sh

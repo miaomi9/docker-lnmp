@@ -1,0 +1,10 @@
+/*
+!.gitignore
+!README.md
+!default
+!docker-php.example.ini
+!php.development.ini
+!php.production.ini
+!zz-docker.example.conf
+!zz-docker.production.conf
+!php-cli.example.ini

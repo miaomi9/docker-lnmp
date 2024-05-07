@@ -1,0 +1,5 @@
+resources:
+- ../../../../kubernetes/lnmp/redis/overlays/production
+- pv.yaml
+- pvc.yaml
+namespace: ci

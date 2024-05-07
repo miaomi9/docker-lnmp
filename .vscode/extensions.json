@@ -1,0 +1,25 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=827846
+  // for the documentation about the extensions.json format
+  "recommendations": [
+      "redhat.vscode-yaml",
+      "zainchen.json",
+      "william-voyek.vscode-nginx",
+      "raynigon.nginx-formatter",
+      "ms-azuretools.vscode-docker",
+      "ms-kubernetes-tools.vscode-kubernetes-tools",
+      "hangxingliu.vscode-systemd-support",
+      // "ms-vscode-remote.vscode-remote-extensionpack",
+      "ms-vscode-remote.remote-wsl",
+      "ms-vscode-remote.remote-containers",
+      // "ms-vscode-remote.remote-ssh",
+      "ms-vscode.powershell",
+      "editorconfig.editorconfig",
+      "ivory-lab.jenkinsfile-support",
+      // "ms-python.vscode-pylance",
+      "xdebug.php-debug",
+      "mikestead.dotenv",
+      "be5invis.toml",
+      "MS-vsliveshare.vsliveshare",
+  ]
+}

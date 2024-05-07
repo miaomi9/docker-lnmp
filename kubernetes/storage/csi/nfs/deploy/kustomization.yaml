@@ -1,0 +1,3 @@
+resources:
+- csi-nfs-driverinfo.yaml
+- csi-nfs-node.yaml

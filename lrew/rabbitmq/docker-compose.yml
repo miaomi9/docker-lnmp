@@ -1,0 +1,34 @@
+
+
+x-common:
+  &common
+  restart: always
+  env_file: ./scripts/cli/timezone.env
+  networks:
+    - backend
+  # dns:
+  #   - ${DNS:-114.114.114.114}
+
+x-common-label:
+  &common-label
+  labels:
+    - ${LNMP_DOMAIN:-com.khs1994.lnmp}=true
+    - ${LNMP_DOMAIN:-com.khs1994.lnmp}.app.env=development
+
+services:
+  rabbitmq:
+    << :
+      - *common
+      - *common-label
+    image: ${LNMP_LIBRARY_NS:-library}/rabbitmq:${LNMP_RABBITMQ_VERSION:-3.9.0}-management-alpine
+    volumes:
+      - type: volume
+        source: rabbitmq-data
+        target: /var/lib/rabbitmq
+    ports:
+      - "${LNMP_RABBITMQ_PORT_1000:-127.0.0.1:15672}:15672"
+      - "${LNMP_RABBITMQ_PORT:-127.0.0.1:5672}:5672"
+
+volumes:
+  rabbitmq-data:
+    << : *common-label

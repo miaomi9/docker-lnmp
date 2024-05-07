@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#
+# https://github.com/laravel/laravel
+#
+
+set -e
+
+if [ "$1" != 'new' ];then
+  echo "Only support new command"
+  exit 1
+fi
+
+if [ -z "$2" ];then
+  echo "Please input path"
+  exit 1
+fi
+
+ScriptRoot="$( cd "$( dirname "$0"  )" && pwd  )"
+
+source $ScriptRoot/.init
+source $ScriptRoot/../config/composer/.env.example
+source $ScriptRoot/../config/composer/.env
+
+if [ "$debug" = 'true' ];then set -x; fi
+
+if ! [ -d "$2" ];then
+
+docker run -i ${tty} --rm \
+  --mount src=lnmp_composer-cache-data,target=${COMPOSER_CACHE_DIR} \
+  --mount src=lnmp_composer_home-data,target=${COMPOSER_HOME} \
+  --mount type=bind,src=$ScriptRoot/../config/composer/config.json,target=${COMPOSER_HOME}/config.json \
+  --network none \
+  bash \
+  bash -c \
+  "set -x; \
+   mkdir -p ${COMPOSER_CACHE_DIR}/repo; \
+   mkdir -p ${COMPOSER_CACHE_DIR}/files; \
+   rm -rf ${COMPOSER_HOME}/auth.json; \
+   chown -R ${LNMP_USER} ${COMPOSER_CACHE_DIR}; \
+   chown -R ${LNMP_USER} ${COMPOSER_HOME}; \
+  "
+
+if [ "$LNMP_CN_ENV" = 'false' ];then
+  sed -i 's!https://mirrors.aliyun.com/composer/!https://repo.packagist.org!g' \
+  $ScriptRoot/../config/composer/config.json
+fi
+
+docker run -i ${tty} --rm \
+  --mount type=bind,src=$PWD,target=/app \
+  --mount src=lnmp_composer-cache-data,target=${COMPOSER_CACHE_DIR} \
+  --mount src=lnmp_composer_home-data,target=${COMPOSER_HOME} \
+  --mount type=bind,src=$ScriptRoot/../config/composer/config.json,target=${COMPOSER_HOME}/config.json \
+  --mount type=bind,src=$ScriptRoot/../config/php8/php-cli.ini,target=/usr/local/etc/php/php-cli.ini \
+  --env-file $ScriptRoot/../config/composer/.env \
+  ${LNMP_PHP_IMAGE}:${LNMP_PHP_IMAGE_TAG} \
+  gosu ${LNMP_USER:-root:root} composer create-project --prefer-dist laravel/laravel=${3:-10.*} "$2"
+
+else
+  echo "Path $2 existing"
+  exit
+fi
+
+LARAVEL_PATH="$2"
+
+_sudo(){
+  command -v sudo > /dev/null && echo "sudo" || true
+}
+
+# if [[ ${OS} = 'Linux' || ${OS} = 'Darwin' ]];then
+#   echo -e "\n\033[32m==> INFO\033[0m  change folder own and group ..."
+#   $(_sudo) chmod -R 765 ${LARAVEL_PATH}
+#   $(_sudo) chown -R `id -u`:`id -g` ${LARAVEL_PATH}
+#   chmod -R 777 ${LARAVEL_PATH}/storage
+# fi

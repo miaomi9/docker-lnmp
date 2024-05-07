@@ -1,0 +1,603 @@
+name: Test k8s
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -exo pipefail {0}
+
+jobs:
+  setup-k8s:
+   # runs-on: ubuntu-${{matrix.dist}}
+   runs-on: ubuntu-22.04
+   timeout-minutes: 20
+   if: |
+     ! contains( github.event.head_commit.message, '[skip ci]')
+   env:
+     CI_KUBERNETES_VERSION: ${{matrix.CI_KUBERNETES_VERSION}}
+     LNMP_K8S_GET: ${{matrix.LNMP_K8S_GET}}
+     K8S_IMAGE_NS: ${{matrix.K8S_IMAGE_NS}}
+     K8S_IMAGE_REGISTRY: ${{matrix.K8S_IMAGE_REGISTRY}}
+     K8S_ROOT: ${{matrix.K8S_ROOT}}
+     LNMP_K8S_LOCAL_INSTALL_OPTIONS: ${{matrix.LNMP_K8S_LOCAL_INSTALL_OPTIONS}}
+     DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
+     DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+     LNMP_DOCKER_MIRROR: registry-1.docker.io
+     CNI_CALICO_EBPF: ${{matrix.CNI_CALICO_EBPF}}
+     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+     GENERATE_CLI_HELP: ${{matrix.GENERATE_CLI_HELP}}
+     IPV6: ${{matrix.IPV6}}
+     DOWNLOAD_FROM_CODING: "false"
+   strategy:
+     max-parallel: 1
+     matrix:
+       include:
+      # next next version
+      #  - os: ubuntu
+      #    dist: 20.04
+      #    CI_KUBERNETES_VERSION: 1.29.0-alpha.1
+      #    LNMP_K8S_GET: --url
+      #    GENERATE_CLI_HELP: "true"
+
+      # next version
+      #  - os: ubuntu
+      #    dist: 20.04
+      #    CI_KUBERNETES_VERSION: 1.28.0-alpha.1
+      #    LNMP_K8S_GET: --url
+      #    GENERATE_CLI_HELP: "true"
+
+       # current stable version
+       - os: ubuntu
+         dist: 20.04
+         CI_KUBERNETES_VERSION: 1.27.0
+         LNMP_K8S_LOCAL_INSTALL_OPTIONS: --crio
+         K8S_IMAGE_NS: khs1994
+         K8S_IMAGE_REGISTRY: useccr.ccs.tencentyun.com
+         UPLOAD_TO_CODING: "true"
+       - os: ubuntu
+         dist: 20.04
+         CI_KUBERNETES_VERSION: 1.27.0
+         LNMP_K8S_GET: --url
+
+         GENERATE_CLI_HELP: "true"
+
+         UPLOAD_TO_CODING: "true"
+       # ipv6
+       # - os: ubuntu
+       #  dist: 20.04
+       #  CI_KUBERNETES_VERSION: 1.27.0
+       #  LNMP_K8S_GET: --url
+       #  IPV6: "true"
+       - os: ubuntu
+         dist: 20.04
+         CI_KUBERNETES_VERSION: 1.27.0
+         LNMP_K8S_GET: --url
+         CNI_CALICO_EBPF: 'true'
+      # v1.24.0+ not support docker
+      #  - os: ubuntu
+      #    dist: 20.04
+      #    CI_KUBERNETES_VERSION: 1.24.0
+      #    LNMP_K8S_LOCAL_INSTALL_OPTIONS: --docker
+       - os: ubuntu
+         dist: 20.04
+         CI_KUBERNETES_VERSION: 1.27.0
+         LNMP_K8S_GET: --url
+         K8S_ROOT: /opt/k8s-custom
+       # old version
+       - os: ubuntu
+         dist: 20.04
+         CI_KUBERNETES_VERSION: 1.26.4
+         LNMP_K8S_GET: --url
+       - os: ubuntu
+         dist: 20.04
+         CI_KUBERNETES_VERSION: 1.25.9
+         LNMP_K8S_GET: --url
+       - os: ubuntu
+         dist: 20.04
+         CI_KUBERNETES_VERSION: 1.24.13
+         LNMP_K8S_GET: --url
+     fail-fast: false
+   steps:
+     - uses: actions/checkout@v3
+       with:
+         fetch-depth: 2
+     - uses: docker-practice/actions-setup-docker@master
+       with:
+         docker_channel: test
+         docker_version: "20.10"
+     - uses: actions/cache@v3
+       name: k8s-files-caches
+       with:
+         path: |
+           kubernetes-release/release/v${{matrix.CI_KUBERNETES_VERSION}}-linux-amd64/kubernetes/server/bin
+         key: ${{matrix.CI_KUBERNETES_VERSION}}
+     - uses: actions/cache@v3
+       name: khs1994-docker-lnmp-caches
+       with:
+         path: ~/.khs1994-docker-lnmp/caches
+         key: khs1994-docker-lnmp-caches-20201101-0
+     - run: |
+         uname -a
+
+         docker pull dockerhub.azk8s.cn/library/nginx || true
+
+         sudo mount bpffs /sys/fs/bpf -t bpf || true
+         sudo mount -t bpf || true
+
+         df -h
+
+         docker image ls
+         docker system df
+         docker system prune -a -f
+         docker system df
+
+         sudo apt install -y tree net-tools
+
+         sudo update-alternatives --display iptables || true
+         sudo update-alternatives --list    iptables || true
+
+         df -h
+       name: os-metadata
+     - uses: actions/setup-go@v3
+       with:
+         go-version: '^1.19'
+     - name: Setup dns
+       run: |
+         pwd
+         #  /home/runner/work/lnmp-k8s/lnmp-k8s
+
+         go env
+         go env GOPATH
+         go version
+
+         sudo go env
+         sudo go env GOPATH
+         sudo go version
+
+         git clone --depth=1 -b 20.10 https://github.com/khs1994-docker/lnmp ~/lnmp
+         cp -r ~/lnmp/. /home/runner/work/lnmp-k8s
+         ls -la /home/runner/work/lnmp-k8s
+         # remove some apt source
+         cat /etc/apt/sources.list
+         ls /etc/apt/sources.list.d || true
+         sudo rm -rf /etc/apt/sources.list.d/pgdg.list || true
+
+         sudo sestatus || true
+         ls -lat ~/.khs1994-docker-lnmp/caches || true
+         ls -la kubernetes-release/release/ || true
+         echo $PATH
+
+         docker compose version
+         docker --version
+
+         ip addr
+         hostnamectl
+         ifconfig eth0
+         export SERVER_IP=`ifconfig eth0 | grep "inet" | awk '{ print $2}' | cut -d ':' -f 2`
+         ./lnmp-k8s > /dev/null
+         echo $SERVER_IP > .server_ip
+     - run: |
+         echo is_github_tag_event
+       if: github.event_name == 'push' && contains(github.ref,'refs/tags/')
+       name: Is tag event
+     - name: Install k8s
+       run: |
+         SERVER_IP=`cat .server_ip`
+
+         export KUBERNETES_TYPE=server
+         sed -i "s!192.168.199.100!${SERVER_IP}!g" systemd/.env
+         sed -i "s#/opt/k8s#${K8S_ROOT:-/opt/k8s}#g" systemd/.env
+
+         cat systemd/.env
+         sudo hostnamectl set-hostname node1
+         echo "${SERVER_IP} node1" | sudo tee -a /etc/hosts
+         echo "${SERVER_IP} laravel2.t.khs1994.com" | sudo tee -a /etc/hosts
+         sudo cat /etc/hosts || true
+
+         docker compose up cfssl-local
+         docker compose down
+         # source .env
+         ls kubernetes-release/release/v${CI_KUBERNETES_VERSION}-linux-amd64/kubernetes/server/bin/kubectl || rm -rf kubernetes-release/release/v${CI_KUBERNETES_VERSION}-linux-amd64
+
+         sudo sed -i "s#^LNMP_CN_ENV=.*#LNMP_CN_ENV=false#g" ./.env
+
+         sudo mkdir -p /home/runner/.khs1994-docker-lnmp/dockerhub
+         sudo chmod -R 777 /home/runner/.khs1994-docker-lnmp
+         ./lnmp-k8s kubernetes-server ${LNMP_K8S_GET}
+         ./lnmp-k8s local-install ${LNMP_K8S_LOCAL_INSTALL_OPTIONS:-}
+         test "$UPLOAD_TO_CODING" = 'true' && ./lnmp-k8s _crun_install || true
+         # debug=1 ./lnmp-k8s local-install ${LNMP_K8S_LOCAL_INSTALL_OPTIONS:-}
+
+         tree kubernetes-release/release/v${CI_KUBERNETES_VERSION}-linux-amd64/kubernetes
+       env:
+        CODING_USERNAME: khs1994-1601432822176
+        CODING_TOKEN: ${{secrets.CODING_DOCKER_PASSWORD}}
+        UPLOAD_TO_CODING: ${{matrix.UPLOAD_TO_CODING}}
+     - name: Start k8s
+       run: |
+         export PATH=${K8S_ROOT:-/opt/k8s}/bin:$PATH
+
+         ls -lat /etc/systemd/system/
+
+         sudo systemctl cat etcd
+         sudo systemctl start etcd || CMD_FAILED=1
+         test -n "$CMD_FAILED" && sudo journalctl -u etcd || true
+         test -n "$CMD_FAILED" && false || true
+
+         # master
+         sudo systemctl cat kube-apiserver
+         sudo systemctl start kube-apiserver || CMD_FAILED=1
+         test -n "$CMD_FAILED" && sudo journalctl -u kube-apiserver || true
+         test -n "$CMD_FAILED" && false || true
+
+         sudo systemctl cat kube-controller-manager
+         sudo systemctl start kube-controller-manager || CMD_FAILED=1
+         test -n "$CMD_FAILED" && sudo journalctl -u kube-controller-manager || true
+         test -n "$CMD_FAILED" && false || true
+
+         sudo systemctl cat kube-scheduler
+         #  if [ $(echo "${CI_KUBERNETES_VERSION}" | cut -d '.' -f 2) -ge 23 ];then \
+         #   echo "replace kube-scheduler config" \
+         #   && echo "remove it when k8s version ge 1.23" \
+         #   && sudo sed -i -e "s!^healthzBindAddress.*!#healthzBindAddress!g" \
+         #               -e "s!^metricsBindAddress.*!#metricsBindAddress!g" \
+         #               -e "s!v1beta1!v1beta3!g" \
+         #               ${K8S_ROOT:-/opt/k8s}/etc/kubernetes/kube-scheduler.config.yaml ; \
+         #  fi
+         sudo systemctl start kube-scheduler || CMD_FAILED=1
+         test -n "$CMD_FAILED" && sudo journalctl -u kube-scheduler || true
+         test -n "$CMD_FAILED" && false || true
+
+         # worker
+         sudo systemctl cat kube-proxy
+         if ! [ "$CNI_CALICO_EBPF" = 'true' ];then
+           sudo systemctl start kube-proxy || CMD_FAILED=1
+         fi
+         test -n "$CMD_FAILED" && sudo journalctl -u kube-proxy || true
+         test -n "$CMD_FAILED" && false || true
+
+         sudo systemctl cat docker
+
+         sudo systemctl cat cri-containerd@1.7
+
+         sudo systemctl cat cri-o || true
+         sudo cat /etc/sysconfig/crio || true
+         sudo cat ${K8S_ROOT:-/opt/k8s}/etc/sysconfig/crio || true
+         /usr/local/bin/crio --config=/etc/crio/crio.conf config > crio.conf || true
+         /usr/local/bin/crio config --default > crio.default.conf || true
+         cat crio.conf || true
+         diff crio.conf crio.default.conf || true
+         ls -R /etc/crio/crio.conf.d || true
+         cat /etc/crio/crio.conf.d/00-default.conf || true
+         echo "!! crio.conf.d 中的文件会覆盖 /etc/crio/crio.conf 中的配置，这里删除 !!" > /dev/null
+         echo "!! 所有的配置均在 /etc/crio/crio.conf 中进行配置                    !!" > /dev/null
+         sudo rm -rf /etc/crio/crio.conf.d/00-default.conf || true
+
+         test -z "${LNMP_K8S_LOCAL_INSTALL_OPTIONS}" \
+           && (sudo systemctl daemon-reload ; sudo systemctl start cri-containerd@1.7) || true
+         test "${LNMP_K8S_LOCAL_INSTALL_OPTIONS}" = "--docker" \
+           && (sudo systemctl restart docker || sudo journalctl -u docker) || true
+         test "${LNMP_K8S_LOCAL_INSTALL_OPTIONS}" = "--crio" \
+           && (/usr/local/bin/crio --help; sudo systemctl daemon-reload ; \
+               sudo systemctl start cri-o) || true
+
+         test -z "${LNMP_K8S_LOCAL_INSTALL_OPTIONS}" \
+           && export KUBELET_SERVICE='@cri-containerd' || true
+
+         test "${LNMP_K8S_LOCAL_INSTALL_OPTIONS}" = "--crio" \
+           && export KUBELET_SERVICE='@crio' || true
+
+         echo kubelet${KUBELET_SERVICE}
+
+         docker info
+
+         sleep 10
+         sudo systemctl cat kubelet${KUBELET_SERVICE}
+         # github action 硬盘空间不够
+         sudo sed -i "s/10%/1%/g" ${K8S_ROOT:-/opt/k8s}/etc/kubernetes/kubelet.config.yaml
+         sudo sed -i "s/5%/1%/g" ${K8S_ROOT:-/opt/k8s}/etc/kubernetes/kubelet.config.yaml
+         sudo sed -i "s/11%/1%/g" ${K8S_ROOT:-/opt/k8s}/etc/kubernetes/kubelet.config.yaml
+         cat ${K8S_ROOT:-/opt/k8s}/etc/kubernetes/kubelet.config.yaml
+         sudo systemctl start kubelet${KUBELET_SERVICE} || CMD_FAILED=1
+         test -n "$CMD_FAILED" && sudo journalctl -u kubelet${KUBELET_SERVICE} || true
+         test -n "$CMD_FAILED" && false || true
+
+         sleep 10
+         # sudo systemctl status etcd
+         # sudo systemctl status docker
+         # sudo systemctl status kube-apiserver
+         # sudo systemctl status kube-controller-manager
+         # sudo systemctl status kube-scheduler
+         # sudo systemctl status kube-proxy
+         # sudo systemctl status kubelet${KUBELET_SERVICE}
+
+         kubectl version || true
+         kubectl cluster-info || true
+
+         sleep 30
+
+         sudo journalctl -u etcd
+         sudo journalctl -u kube-apiserver
+         sudo journalctl -u kube-controller-manager
+         sudo journalctl -u kube-scheduler
+
+         sudo journalctl -u kube-proxy
+         sudo journalctl -u kubelet${KUBELET_SERVICE}
+         sudo journalctl -u cri-containerd@1.7 || true
+         sudo journalctl -u cri-o || true
+
+         kubectl get csr
+         CSR_NAME=`kubectl get csr | grep system:node:node1 | awk '{print $1}' | head -1`
+         echo ${CSR_NAME}
+         kubectl certificate approve $CSR_NAME
+         kubectl get csr
+
+         sed -i "s#/opt/k8s#${K8S_ROOT:-/opt/k8s}#g" addons/cni/calico-custom/custom.patch.json
+
+         if [ "${IPV6}" = 'true' ];then
+           sed -i -e "s#_IP6#IP6#g" \
+             -e "s#_FELIX_IPV6SUPPORT#FELIX_IPV6SUPPORT#g" \
+             addons/cni/calico-custom/custom.patch.json
+           sed -i 's#assign_ipv6": "false#assign_ipv6": "true#g' \
+             addons/cni/calico/calico.yaml
+         fi
+
+         git diff
+         if [ "$CNI_CALICO_EBPF" = 'true' ];then
+           export SERVER_IP=`cat .server_ip`
+           cat addons/cni/calico-eBPF/kubernetes.yaml \
+              | sed -e "s/wsl2.k8s.khs1994.com/${SERVER_IP}/g" \
+              | kubectl apply -f -
+           kubectl apply -k addons/cni/calico-eBPF
+         else
+           kubectl apply -k addons/cni/calico-custom
+         fi
+         kubectl get node
+         kubectl get all -A
+         kubectl api-versions
+         kubectl api-resources
+
+         sleep 40
+         kubectl get all -A
+         kubectl describe deployment.apps/calico-kube-controllers -n kube-system
+         kubectl describe pod -n kube-system -l k8s-app=calico-kube-controllers
+         ip addr
+
+         sleep 40
+         kubectl get all -A
+         ip addr
+
+         # sudo journalctl -u cri-o || true
+
+         # if [ "${LNMP_K8S_LOCAL_INSTALL_OPTIONS}" = "--crio" ];then sudo systemctl restart cri-o && sudo systemctl restart kubelet@crio ;fi
+
+         sleep 20
+         kubectl get all -A
+
+         kubectl describe deployment.apps/calico-kube-controllers -n kube-system
+         kubectl describe pod -n kube-system -l k8s-app=calico-kube-controllers
+         sudo crictl logs $(sudo crictl ps -a --label io.kubernetes.container.name=calico-kube-controllers -q) || true
+         for id in $(sudo crictl ps -a -q);do sudo crictl logs $id;done || true
+     - name: Show port
+       run: |
+         sudo netstat -nlpt || true
+     - name: Setup addons
+       run: |
+         export PATH=${K8S_ROOT:-/opt/k8s}/bin:$PATH
+
+         sudo install -m755 ${K8S_ROOT:-/opt/k8s}/bin/kubectl /usr/local/bin/kubectl
+         kubectl version --client || true
+
+         df -h
+         ip addr
+
+         kubectl apply -k addons/coredns
+         kubectl apply -k addons/dashboard
+         kubectl apply -k addons/metrics-server
+         kubectl apply -k addons/ingress/nginx/nodeport
+
+         sleep 100
+
+         kubectl get all --all-namespaces
+         kubectl describe pod metrics-server -n kube-system
+         # test metrics server
+         kubectl top node
+         # test dns
+         kubectl describe pod coredns -n kube-system
+         kubectl logs $(kubectl describe pod coredns -n kube-system | grep "Name:" | head -1 | awk '{ print $2}') -n kube-system
+         kubectl run nginx --image nginx:1.21.0-alpine
+         sleep 20
+         kubectl get all
+         kubectl get pod -o wide
+         NGINX_POD_NAME=`kubectl get pod | awk '{print $1}' | tail -1`
+         sudo crictl pull nginx:1.21.0-alpine || true
+         # sudo journalctl -u cri-o || true
+         kubectl exec ${NGINX_POD_NAME} -- cat /etc/resolv.conf
+         kubectl exec ${NGINX_POD_NAME} -- ping -c 5 kubernetes || kubectl exec ${NGINX_POD_NAME} -- nslookup kubernetes || true
+         kubectl exec ${NGINX_POD_NAME} -- ping -c 5 github.com || kubectl exec ${NGINX_POD_NAME} -- nslookup github.com
+         kubectl exec ${NGINX_POD_NAME} -- curl -k https://kubernetes/api || true
+
+         kubectl expose pod/${NGINX_POD_NAME} --port=80
+         sleep 2
+         NGINX_SERVICE_NAME=$(echo $(kubectl get svc | grep nginx | awk '{ print $1 }' | cut -d "/" -f 2))
+         echo $NGINX_SERVICE_NAME
+         echo $NGINX_POD_NAME
+         kubectl get all
+         kubectl exec ${NGINX_POD_NAME} -- curl $NGINX_SERVICE_NAME || true
+
+         kubectl delete svc/${NGINX_SERVICE_NAME}
+
+         # ipv6
+         if [ "${IPV6}" = 'true' ];then
+           kubectl apply -f demo/ipv6
+
+           kubectl get svc/nginx -o yaml
+           kubectl get deployment/nginx -o yaml || true
+           kubectl get pod/${NGINX_POD_NAME} -o yaml
+
+           set -x
+           POD_IPV4_IP=`kubectl get pod/${NGINX_POD_NAME} -o go-template="{{(index .status.podIPs 0).ip}}"`
+           curl ${POD_IPV4_IP}:80 || true
+           POD_IPV6_IP=`kubectl get pod/${NGINX_POD_NAME} -o go-template="{{(index .status.podIPs 1).ip}}"` || true
+           curl [${POD_IPV6_IP}]:80 || true
+           CLUSTER_IPV6_IP=`kubectl get svc/nginx -o go-template="{{ .spec.clusterIP }}"`
+           curl [${CLUSTER_IPV6_IP}]:80 || true
+           NODE_IPV6_IP=`ifconfig eth0 | grep "inet6" | awk '{ print $2}' | head -1`
+           curl [${NODE_IPV6_IP}]:8080 || true
+         fi
+
+         kubectl delete deployment nginx || true
+         kubectl delete pod ${NGINX_POD_NAME} || true
+         kubectl delete svc/${NGINX_SERVICE_NAME} || true
+
+         kubectl get all
+         # test ingress-nginx
+         HTTP_PORT=`kubectl get service -n ingress-nginx | grep ingress-nginx | grep NodePort | awk '{print $5}' | cut -d ':' -f 2 | cut -d / -f 1`
+         curl --version
+         SERVER_IP=`cat .server_ip`
+         curl ${SERVER_IP}:${HTTP_PORT}
+
+         # test "${LNMP_K8S_GET}" = "--url" && sudo rm -rf kubernetes-release/release/ || true
+     - name: cleanup
+       run: |
+         df -h
+
+         sudo rm -rf ${K8S_ROOT:-/opt/k8s}/bin/apiextensions-apiserver
+         sudo rm -rf ${K8S_ROOT:-/opt/k8s}/bin/kubeadm
+
+         df -h
+     - name: Test k8s
+       run: |
+         export PATH=${K8S_ROOT:-/opt/k8s}/bin:$PATH
+         export SERVER_IP=`cat .server_ip`
+
+         sudo crictl version
+         echo ::group::crictl info
+         sudo crictl info
+         echo ::endgroup::
+
+         ip addr
+         echo ::group::git diff
+         git diff
+         echo ::endgroup::
+
+         # cd cli ; (sh generate.sh || true); cd ..
+         # git diff
+         sudo netstat -lnpt
+
+         echo ::group::Test k8s
+         ./tests/test.sh
+         echo ::endgroup::
+
+         sudo crictl version
+
+         echo ::group::crictl info
+         sudo crictl info
+         echo ::endgroup::
+
+         sudo ls -lat /opt || true
+         sudo ls -lat /opt/k8s || true
+         sudo ls -lat ${K8S_ROOT:-/opt/k8s} || true
+
+         echo ::group::kubectl get node
+         kubectl get node -o yaml
+         echo ::endgroup::
+     - name: Config git
+       run: |
+          git config --global user.email "gh-bot@khs1994.com"
+          git config --global user.name "gh-bot"
+     - name: Update k8s cli help info
+       run:
+        |
+         export PATH=${K8S_ROOT:-/opt/k8s}/bin:$PATH
+         BASE_BRANCH=master
+         # BASE_BRANCH=v1.25.0-config
+         if ! [ $CI_KUBERNETES_VERSION = '1.27.0' -a "$GENERATE_CLI_HELP" = "true" ];then
+           exit 0
+         fi
+
+         set -x
+         cd /tmp
+         git clone -b ${BASE_BRANCH} --depth=3 https://khs1994:${GITHUB_TOKEN}@github.com/khs1994-docker/lnmp-k8s
+         cd lnmp-k8s
+
+         stty size || true
+         stty cols 200 || true
+
+         # sudo sed -i "s#^LNMP_CN_ENV=.*#LNMP_CN_ENV=true#g" ./.env
+         cd cli ; (COLUMNS=200 sh generate.sh || true); cd ..
+
+         git add .
+         git commit -m "Update v$CI_KUBERNETES_VERSION config" -s \
+         && git push origin $(git branch --show-current):v$CI_KUBERNETES_VERSION-config -f \
+         || true
+
+         cd /tmp
+         rm -rf lnmp-k8s
+     - name: Update k8s next cli help info
+       run:
+        |
+         export PATH=${K8S_ROOT:-/opt/k8s}/bin:$PATH
+         BASE_BRANCH=v1.28.0-alpha.1-config
+         BASE_BRANCH=master
+         if [ $CI_KUBERNETES_VERSION != '1.28.0-alpha.1' ];then
+           exit 0
+         fi
+
+         set -x
+         cd /tmp
+         rm -rf lnmp-k8s
+         git clone -b ${BASE_BRANCH} --depth=3 https://khs1994:${GITHUB_TOKEN}@github.com/khs1994-docker/lnmp-k8s \
+         || git clone -b master --depth=3 https://khs1994:${GITHUB_TOKEN}@github.com/khs1994-docker/lnmp-k8s
+         cd lnmp-k8s
+
+         stty size || true
+         stty cols 200 || true
+
+         # sudo sed -i "s#^LNMP_CN_ENV=.*#LNMP_CN_ENV=true#g" ./.env
+         cd cli ; (COLUMNS=200 sh generate.sh || true); cd ..
+
+         git add .
+         git commit -m "Update v$CI_KUBERNETES_VERSION config" -s \
+         && git push origin $(git branch --show-current):v${CI_KUBERNETES_VERSION}-config -f \
+         || true
+
+     - name: Update k8s next next cli help info
+       run:
+        |
+         export PATH=${K8S_ROOT:-/opt/k8s}/bin:$PATH
+         BASE_BRANCH=v1.28.0-alpha.1
+         # BASE_BRANCH=master
+         if [ $CI_KUBERNETES_VERSION != '1.29.0-alpha.1' ];then
+           exit 0
+         fi
+
+         set -x
+         cd /tmp
+         rm -rf lnmp-k8s
+         git clone -b ${BASE_BRANCH} --depth=3 https://khs1994:${GITHUB_TOKEN}@github.com/khs1994-docker/lnmp-k8s \
+         || git clone -b master --depth=3 https://khs1994:${GITHUB_TOKEN}@github.com/khs1994-docker/lnmp-k8s
+         cd lnmp-k8s
+
+         stty size || true
+         stty cols 200 || true
+
+         # sudo sed -i "s#^LNMP_CN_ENV=.*#LNMP_CN_ENV=true#g" ./.env
+         cd cli ; (COLUMNS=200 sh generate.sh || true); cd ..
+
+         git add .
+         git commit -m "Update v$CI_KUBERNETES_VERSION config" -s \
+         && git push origin $(git branch --show-current):v${CI_KUBERNETES_VERSION}-config -f \
+         || true
+
+
+
+
+    #  - name: Setup tmate session
+    #    uses: mxschmitt/action-tmate@v3
+    #    if: ${{ failure() }}
+    #    timeout-minutes: 60

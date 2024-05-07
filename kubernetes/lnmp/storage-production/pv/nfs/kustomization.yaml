@@ -1,0 +1,3 @@
+resources:
+  - ../../../storage/pv/nfs
+nameSuffix: -production

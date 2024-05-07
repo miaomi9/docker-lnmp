@@ -1,0 +1,3 @@
+resources:
+- harbor.yaml
+- pvc.yaml

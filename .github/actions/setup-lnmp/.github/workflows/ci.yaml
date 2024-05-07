@@ -1,0 +1,61 @@
+on:
+  push:
+
+name: CI
+
+jobs:
+  lnmp:
+    name: LNMP
+    strategy:
+      matrix:
+        lnmp_branch:
+          - 19.03
+          - "20.10"
+          - master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+        with:
+          fetch-depth: 2
+      - uses: docker-practice/actions-setup-docker@master
+        with:
+          docker_channel: test
+          docker_version: ${{ matrix.lnmp_branch }}
+      - name: Test
+        uses: ./
+        # uses: khs1994-docker/actions-setup-lnmp@master
+        with:
+          lnmp_branch: ${{ matrix.lnmp_branch }}
+      - name: Init LNMP
+        run: |
+          QUITE=true lnmp-docker
+          docker-compose --version || true
+          docker compose version || true
+      - name: Up
+        run: |
+          set -x
+          lnmp-docker services
+          lnmp-docker up
+      - name: Connect
+        run: |
+          set -x
+          sleep 30
+          docker ps -a
+          lnmp-php -v
+
+          curl 127.0.0.1
+
+  notsupport-platform:
+    strategy:
+      matrix:
+        os:
+         - windows-latest
+         - macOS-12
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@main
+        with:
+          fetch-depth: 2
+      - name: default
+        uses: ./
+        # uses: khs1994-docker/actions-setup-lnmp@master

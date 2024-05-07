@@ -1,0 +1,230 @@
+on:
+  schedule:
+    - cron: '0 0 * * 4'
+  workflow_dispatch:
+    inputs:
+        PHP_VCS_REF:
+          default: master
+          required: true
+          description: https://github.com/php/php-src/commits/master master branch commit id
+
+name: PHP_nightly
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -exo pipefail {0}
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      max-parallel: 1
+      matrix:
+        # TYPE: [CLI, FPM, UNIT, COMPOSER, SWOOLE, PPM, SUPERVISORD]
+        TYPE: [CLI, FPM, COMPOSER, S6, UNIT, SWOOLE]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+      with:
+        fetch-depth: 2
+    - run: |
+        env
+        docker --version
+        docker compose version
+      name: 'manifest'
+    - run: |
+        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
+        # echo ${DOCKER_PASSWORD} | docker login -u ${TENCENT_DOCKER_USERNAME} --password-stdin uswccr.ccs.tencentyun.com
+        echo ${DOCKER_PASSWORD} | docker login -u ${ALIYUN_DOCKER_USERNAME} --password-stdin registry.us-east-1.aliyuncs.com
+        echo ${GHCR_IO_TOKEN} | docker login -u khs1994 --password-stdin ghcr.io
+        echo ${CODING_DOCKER_PASSWORD} | docker login -u khs1994-1601432822176 --password-stdin pcit-docker.pkg.coding.net
+      name: 'Docker Login'
+      env:
+        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+        DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
+        TENCENT_DOCKER_USERNAME: ${{secrets.TENCENT_DOCKER_USERNAME}}
+        ALIYUN_DOCKER_USERNAME: ${{secrets.ALIYUN_DOCKER_USERNAME}}
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        GHCR_IO_TOKEN: ${{secrets.GHCR_IO_TOKEN}}
+        CODING_DOCKER_PASSWORD: ${{secrets.CODING_DOCKER_PASSWORD}}
+    - uses: docker-practice/actions-setup-docker@master
+      with:
+        docker_channel: test
+        docker_version: "20.10"
+    - run: |
+        docker --version
+        docker compose version
+        docker buildx version
+        docker
+      name: 'install-after-manifest'
+    - run: |
+        cp .env.example .env
+
+        echo $GITHUB_REF | grep -q 'refs/tags/' && IS_TAG_EVENT=1 || true
+
+        if ! [ -n "${IS_TAG_EVENT}" -o "${GITHUB_EVENT_NAME}" = 'workflow_dispatch' ];then \
+          export PLATFORM=linux/amd64; \
+          if [ "$PHP_VERSION" = 8_X_X -o "$PHP_VERSION" = nightly ];then \
+            export PLATFORM=linux/amd64,linux/arm64; \
+            IS_PUSH=--push; \
+            mirror="${add_mirror}"; \
+          else \
+            true; \
+          fi; \
+        else \
+          IS_PUSH=--push \
+          && mirror="${add_mirror}"; \
+        fi
+
+        VCS_REF=`git rev-parse --short HEAD`
+        CACHE_IMAGE=ghcr.io/${DOCKER_HUB_USERNAME}/php
+        # CACHE_IMAGE=${DOCKER_HUB_USERNAME}/php
+
+        if [ -z "${PHP_VCS_REF}" -o "${PHP_VCS_REF}" = 'master' ];then
+          git clone --depth=1 https://github.com/php/php-src $HOME/php-src
+          PHP_VCS_REF=`git -C $HOME/php-src rev-parse --short HEAD`
+        fi
+
+        options="--build-arg VCS_REF=$VCS_REF \
+        --build-arg PHP_VCS_REF=$PHP_VCS_REF \
+        --build-arg PHP_VERSION=$PHP_TAG_VERSION \
+        --cache-from=khs1994/php:${FOLDER}-arm-${TYPE,,}-cache \
+        --cache-from=${CACHE_IMAGE}:${FOLDER}-${TYPE,,}-cache \
+        --cache-to=${CACHE_IMAGE}:${FOLDER}-${TYPE,,}-cache"
+        echo $options
+
+        if [ "$TYPE" = "UNIT" ];then
+          echo "type=unit" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-unit-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-unit-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-unit-alpine ";done) \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/unit
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "SUPERVISORD" ];then
+          echo "type=supervisord" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-supervisord-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-supervisord-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-supervisord-alpine ";done) \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/supervisord
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "COMPOSER" ];then
+          echo "type=composer" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-composer-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-composer-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-composer-alpine ";done) \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/composer
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "SINGLE" ];then
+          echo "type=single" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-single-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-single-alpine \
+          ${IS_PUSH} ${FOLDER}/single
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "SWOOLE" ];then
+          echo "type=swoole" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-swoole-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-swoole-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-swoole-alpine ";done) \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/swoole
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "FPM" ];then
+          echo "type=fpm" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-fpm-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          --target=php -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-fpm-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-fpm-alpine ";done) \
+          ${fpmTagOptions} \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/fpm
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "CLI" ];then
+          echo "type=cli" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-cli-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-cli-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-cli-alpine ";done) \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/cli
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "S6" ];then
+          echo "type=s6" >> $GITHUB_OUTPUT
+          echo "image=$DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-s6-alpine" >> $GITHUB_OUTPUT
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-s6-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-s6-alpine ";done) \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/s6
+          echo ::endgroup::
+        fi
+
+        if [ "$TYPE" = "PPM" ];then
+          echo ::group::Build $TYPE
+          docker buildx build $options \
+          --build-arg ALPINE_URL=${ALPINE_URL:-dl-cdn.alpinelinux.org} \
+          -t $DOCKER_HUB_USERNAME/php:${PHP_TAG_VERSION}-ppm-alpine \
+          $(for item in `echo $mirror`;do echo " -t ${item}:${PHP_TAG_VERSION}-ppm-alpine ";done) \
+          --platform ${PLATFORM} ${IS_PUSH} ${FOLDER}/ppm
+          echo ::endgroup::
+        fi
+      env:
+        GITHUB_EVENT_NAME: ${{github.event_name}}
+        DOCKER_HUB_USERNAME: khs1994
+        DOCKER_HUB_USERNAME_TEST: lrew
+        PLATFORM: linux/amd64,linux/arm64 #,linux/arm/v7
+        PHP_VERSION: nightly
+        FOLDER: nightly
+        PHP_TAG_VERSION: nightly
+        TYPE: ${{ matrix.TYPE }}
+        add_mirror: registry.us-east-1.aliyuncs.com/khs1994-us/php pcit-docker.pkg.coding.net/khs1994-docker/khs1994/php ghcr.io/khs1994/php
+        PHP_VCS_REF: ${{ github.event.inputs.PHP_VCS_REF }}
+      name: 'Build Image'
+      id: build
+    - name: Run Snyk to check Docker image for vulnerabilities
+      # Snyk can be used to break the build when it detects vulnerabilities.
+      # In this case we want to upload the issues to GitHub Code Scanning
+      continue-on-error: true
+      uses: snyk/actions/docker@master
+      env:
+        # In order to use the Snyk Action you will need to have a Snyk API token.
+        # More details in https://github.com/snyk/actions#getting-your-snyk-token
+        # or you can signup for free at https://snyk.io/login
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        image: ${{ steps.build.outputs.image }}
+        args: --file=nightly/${{ steps.build.outputs.type }}/Dockerfile
+    - name: Upload result to GitHub Code Scanning
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: snyk.sarif

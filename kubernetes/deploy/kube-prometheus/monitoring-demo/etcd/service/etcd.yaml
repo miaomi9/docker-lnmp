@@ -1,0 +1,26 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: etcd
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: etcd
+spec:
+  ports:
+  - port: 2379
+    name: https-metrics
+  clusterIP: None
+---
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: etcd
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: etcd
+subsets:
+  - addresses:
+    - ip: 192.168.199.100
+    ports:
+      - name: https-metrics
+        port: 2379

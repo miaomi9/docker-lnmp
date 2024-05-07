@@ -1,0 +1,9 @@
+
+services:
+
+  redis:
+    build:
+      context: .
+      args:
+        ALPINE_URL: mirrors.aliyun.com
+    image: ${DOCKER_HUB_USERNAME:-khs1994}/redis:${TAG:-7.0.0}-alpine

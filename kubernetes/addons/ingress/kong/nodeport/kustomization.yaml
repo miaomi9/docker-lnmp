@@ -1,0 +1,10 @@
+resources:
+  - ../base
+patches:
+  - target:
+      name: kong-proxy
+      namespace: kong
+      version: v1
+      group: ""
+      kind: Service
+    path: patch.json

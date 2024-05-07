@@ -1,0 +1,9 @@
+/*
+!.gitignore
+!README.md
+!auth
+!ssl-self
+!demo-*
+!wait-for-php.sh
+!demo.config
+!demo.config/*.config

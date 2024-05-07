@@ -1,0 +1,57 @@
+# https://github.com/coreos/butane/blob/main/docs/config-fcos-v1_1.md
+variant: fcos
+version: 1.4.0
+# version: 1.5.0-experimental
+passwd:
+  users:
+    - name: core
+      password_hash: "$1$nwU7Pa6U$zEYWwaz2b/PIv2K.hNu41/"
+      ssh_authorized_keys:
+        - ssh-rsa {{SSH_PUB}}
+      groups:
+        - wheel
+        - sudo
+        - docker
+storage:
+  files:
+    - path: /etc/NetworkManager/system-connections/enp0s8.nmconnection
+      mode: 0600
+      contents:
+        inline: |
+          [connection]
+          id=enp0s8
+          type=ethernet
+          interface-name=enp0s8
+          permissions=
+          autoconnect=true
+
+          [ipv4]
+          dns-search=
+          method=auto
+
+          [ipv6]
+          addr-gen-mode=stable-privacy
+          dns-search=
+          method=auto
+    - path: /etc/NetworkManager/system-connections/enp0s3.nmconnection
+      mode: 0600
+      contents:
+        inline: |
+          [connection]
+          id=enp0s3
+          interface-name=enp0s3
+          type=ethernet
+          autoconnect=true
+
+          [ipv4]
+          method=manual
+          dns=114.114.114.114
+          addresses=192.168.57.200/24
+          gateway=192.168.57.1
+  # directories:
+  #   - path: ${K8S_ROOT}/bin
+  #     mode: 0755
+  #     user:
+  #       name: k8s
+  #     group:
+  #       name: k8s

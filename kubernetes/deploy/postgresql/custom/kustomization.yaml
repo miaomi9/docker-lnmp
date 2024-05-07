@@ -1,0 +1,4 @@
+resources:
+- ../overlays/development
+- pv.yaml
+- pvc.yaml

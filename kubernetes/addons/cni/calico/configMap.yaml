@@ -1,0 +1,12 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: calico.conf
+data:
+  # podCIDR: 192.168.0.0/16
+  podCIDR: 10.244.0.0/16
+  # ipip is default
+  # ipip: "Always"
+  ipip: CrossSubnet
+  # enable BGP
+  # ipip: "Never"

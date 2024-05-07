@@ -1,0 +1,6 @@
+
+
+services:
+  buildkit:
+    image: dockerpracticesig/buildkit:master
+    build: ./

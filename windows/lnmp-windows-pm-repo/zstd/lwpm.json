@@ -1,0 +1,40 @@
+{
+  "name": "zstd",
+  "description": "Zstandard - Fast real-time compression algorithm",
+  "version": "1.5.5",
+  "pre-version": "1.5.5",
+  "homepage": "",
+  "bug": "",
+  "github": "facebook/zstd",
+  "releases": "",
+  "url": "https://github.com/facebook/zstd/releases/download/v${VERSION}/zstd-v${VERSION}-win64.zip",
+  "url-mirror": "https://download.fastgit.org/facebook/zstd/releases/download/v${VERSION}/zstd-v${VERSION}-win64.zip",
+  "pre-url": "",
+  "pre-url-mirror": "",
+  "command": "zstd",
+  "download-filename": "",
+  "architecture": "amd64",
+  "os": "windows",
+  "scripts": {
+    "preinstall": [
+      ""
+    ],
+    "install": [
+      "_unzip $filename C:\\bin",
+      "_cleanup C:\\bin\\zstd",
+      "mv C:\\bin\\zstd-v${VERSION}-win64 C:\\bin\\zstd"
+    ],
+    "postinstall": "",
+    "preuninstall": "",
+    "uninstall": "_cleanup C:\\bin\\zstd",
+    "postuninstall": "",
+    "pruneuninstall": "",
+    "pretest": "",
+    "test": "zstd --version",
+    "posttest": "",
+    "version": "(zstd --version).split(' ')[6].trim(',').trim('v')"
+  },
+  "path": [
+    "C:\\bin\\zstd"
+  ]
+}

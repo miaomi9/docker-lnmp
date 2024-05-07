@@ -1,0 +1,5 @@
+
+
+services:
+  drone:
+    image: drone/drone:2.16.0
